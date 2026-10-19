@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stock Market Live Dashboard</title>
+    <!-- Chart.js for Live Charts -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: #0d1117;
+            color: #c9d1d9;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+
+        /* Top Header Navigation */
+        header {
+            background-color: #161b22;
+            border-bottom: 1px solid #30363d;
+            padding: 12px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 20px;
+            font-weight: bold;
+            color: #58a6ff;
+        }
+
+        .nav-buttons {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .btn-deposit {
+            background-color: #238636;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: 0.2s;
+        }
+
+        .btn-deposit:hover {
+            background-color: #2ea043;
+        }
+
+        /* Live Ticker Bar */
+        .ticker-bar {
+            background-color: #010409;
+            border-bottom: 1px solid #21262d;
+            padding: 8px 24px;
+            display: flex;
+            gap: 30px;
+            overflow-x: auto;
+            white-space: nowrap;
+        }
+
+        .ticker-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 13px;
+        }
+
+        .up { color: #3fb950; }
+        .down { color: #f85149; }
+
+        /* Main Container Layout */
+        .main-container {
+            display: grid;
+            grid-template-columns: 280px 1fr;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        /* Sidebar Watchlist */
+        .sidebar {
+            background-color: #161b22;
+            border-right: 1px solid #30363d;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .watchlist-title {
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #8b949e;
+            font-weight: 600;
+        }
+
+        .stock-card {
+            background-color: #21262d;
+            border-radius: 6px;
+            padding: 12px;
+            cursor: pointer;
+            transition: 0.2s;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .stock-card:hover, .stock-card.active {
+            border: 1px solid #58a6ff;
+            background-color: #282e38;
+        }
+
+        .stock-name {
+            font-weight: 600;
+            color: #f0f6fc;
+        }
+
+        .stock-sub {
+            font-size: 11px;
+            color: #8b949e;
+        }
+
+        /* Content Area */
+        .content-area {
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            overflow-y: auto;
+        }
+
+        .chart-card {
+            background-color: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 8px;
+            padding: 20px;
+        }
+
+        .chart-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .chart-title {
+            font-size: 18px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .timeframe-btn-group {
+            display: flex;
+            gap: 5px;
+            background-color: #21262d;
+            padding: 4px;
+            border-radius: 6px;
+        }
+
+        .tf-btn {
+            background: none;
+            border: none;
+            color: #8b949e;
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            cursor: pointer;
+        }
+
+        .tf-btn.active, .tf-btn:hover {
+            background-color: #30363d;
+            color: #f0f6fc;
+        }
+
+        .chart-container {
+            position: relative;
+            height: 320px;
+            width: 100%;
+        }
+
+        /* Modal Popup for Deposit */
+        .modal-backdrop {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.7);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .modal-box {
+            background-color: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 10px;
+            width: 400px;
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            position: relative;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #30363d;
+            padding-bottom: 10px;
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            color: #8b949e;
+            font-size: 18px;
+            cursor: pointer;
+        }
+
+        .upi-box {
+            background-color: #0d1117;
+            border: 1px dashed #58a6ff;
+            border-radius: 8px;
+            padding: 15px;
+            text-align: center;
+            margin-top: 10px;
+        }
+
+        .upi-id {
+            font-size: 18px;
+            font-weight: bold;
+            color: #58a6ff;
+            margin: 8px 0;
+            letter-spacing: 0.5px;
+        }
+
+        .copy-btn {
+            background-color: #21262d;
+            color: #c9d1d9;
+            border: 1px solid #30363d;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+        .copy-btn:hover {
+            background-color: #30363d;
+        }
+
+        .qr-placeholder {
+            margin: 15px auto 5px;
+            padding: 10px;
+            background: white;
+            border-radius: 8px;
+            display: inline-block;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Top Header -->
+    <header>
+        <div class="logo">
+            <i class="fa-solid fa-chart-line"></i>
+            <span>MarketPro Live</span>
+        </div>
+        <div class="nav-buttons">
+            <button class="btn-deposit" onclick="openDepositModal()">
+                <i class="fa-solid fa-wallet"></i> Deposit Funds
+            </button>
+        </div>
+    </header>
+
+    <!-- Ticker Bar -->
+    <div class="ticker-bar">
+        <div class="ticker-item">
+            <span>NIFTY 50:</span>
+            <strong id="nifty-val">24,350.20</strong>
+            <span class="up" id="nifty-change">+0.45% <i class="fa-solid fa-arrow-up"></i></span>
+        </div>
+        <div class="ticker-item">
+            <span>BANK NIFTY:</span>
+            <strong id="bank-val">52,110.80</strong>
+            <span class="down" id="bank-change">-0.15% <i class="fa-solid fa-arrow-down"></i></span>
+        </div>
+        <div class="ticker-item">
+            <span>SBIN:</span>
+            <strong id="sbi-val">845.50</strong>
+            <span class="up" id="sbi-change">+1.20% <i class="fa-solid fa-arrow-up"></i></span>
+        </div>
+    </div>
+
+    <!-- Main Container -->
+    <div class="main-container">
+        <!-- Sidebar Watchlist -->
+        <div class="sidebar">
+            <div class="watchlist-title">Watchlist / Indices</div>
+            <div class="stock-card active">
+                <div>
+                    <div class="stock-name">CALL vs PUT (Live)</div>
+                    <div class="stock-sub">Nifty 24350 CE/PE</div>
+                </div>
+                <div class="up"><i class="fa-solid fa-wave-square"></i> Dual</div>
+            </div>
+            <div class="stock-card">
+                <div>
+                    <div class="stock-name">SBI (SBIN)</div>
+                    <div class="stock-sub">State Bank of India</div>
+                </div>
+                <div class="up">₹845.50</div>
+            </div>
+        </div>
+
+        <!-- Main Chart Display -->
+        <div class="content-area">
+            
+            <!-- 1. CALL vs PUT Graph (Green vs Red Lines) -->
+            <div class="chart-card">
+                <div class="chart-header">
+                    <div class="chart-title">
+                        <i class="fa-solid fa-chart-line" style="color: #3fb950;"></i>
+                        Call (CE) vs Put (PE) Live Option Chart
+                    </div>
+                    <div class="timeframe-btn-group">
+                        <button class="tf-btn active">Live</button>
+                        <button class="tf-btn">1D</button>
+                        <button class="tf-btn">1W</button>
+                    </div>
+                </div>
+                <div class="chart-container">
+                    <canvas id="optionChart"></canvas>
+                </div>
+            </div>
+
+            <!-- 2. SBI Stock Single Line Chart -->
+            <div class="chart-card">
+                <div class="chart-header">
+                    <div class="chart-title">
+                        <i class="fa-solid fa-building-columns" style="color: #58a6ff;"></i>
+                        SBI (State Bank of India) - Single Line Chart
+                    </div>
+                    <div class="timeframe-btn-group">
+                        <button class="tf-btn active">1D</button>
+                        <button class="tf-btn">1W</button>
+                        <button class="tf-btn">1M</button>
+                        <button class="tf-btn">1Y</button>
+                    </div>
+                </div>
+                <div class="chart-container">
+                    <canvas id="sbiChart"></canvas>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Deposit Modal Popup -->
+    <div class="modal-backdrop" id="depositModal">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h3><i class="fa-solid fa-qrcode"></i> Deposit Payment</h3>
+                <button class="close-btn" onclick="closeDepositModal()">&times;</button>
+            </div>
+            <p style="font-size: 13px; color: #8b949e;">Scan the QR code or copy the UPI ID below to make a payment:</p>
+            
+            <div class="upi-box">
+                <div style="font-size: 12px; color: #8b949e;">OFFICIAL UPI ID</div>
+                <div class="upi-id" id="upiIdText">8955550232@fam</div>
+                <button class="copy-btn" onclick="copyUPI()"><i class="fa-solid fa-copy"></i> Copy UPI ID</button>
+                
+                <div class="qr-placeholder">
+                    <!-- Dynamic Dynamic QR Generator -->
+                    <img id="qrImage" src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=upi://pay?pa=8955550232@fam&pn=MarketPro" alt="UPI QR Code">
+                </div>
+                <div style="font-size: 11px; color: #8b949e; margin-top: 5px;">Scan with PhonePe, Paytm, Google Pay or FamApp</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript Logic -->
+    <script>
+        // 1. Setup Call vs Put Dual Line Live Chart
+        const optionCtx = document.getElementById('optionChart').getContext('2d');
+        
+        let initialLabels = Array.from({length: 15}, (_, i) => `10:${10 + i}`);
+        let callData = [120, 125, 122, 130, 135, 138, 132, 140, 145, 150, 148, 155, 160, 158, 165];
+        let putData = [180, 175, 178, 170, 165, 160, 166, 158, 150, 145, 147, 140, 135, 138, 130];
+
+        const optionChart = new Chart(optionCtx, {
+            type: 'line',
+            data: {
+                labels: initialLabels,
+                datasets: [
+                    {
+                        label: 'Call (CE) - Up Trend',
+                        data: callData,
+                        borderColor: '#3fb950',
+                        backgroundColor: 'rgba(63, 185, 80, 0.1)',
+                        borderWidth: 2,
+                        tension: 0.3,
+                        fill: false
+                    },
+                    {
+                        label: 'Put (PE) - Down Trend',
+                        data: putData,
+                        borderColor: '#f85149',
+                        backgroundColor: 'rgba(248, 81, 73, 0.1)',
+                        borderWidth: 2,
+                        tension: 0.3,
+                        fill: false
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { labels: { color: '#c9d1d9' } }
+                },
+                scales: {
+                    x: { ticks: { color: '#8b949e' }, grid: { color: '#21262d' } },
+                    y: { ticks: { color: '#8b949e' }, grid: { color: '#21262d' } }
+                }
+            }
+        });
+
+        // Live Dynamic Update for Call/Put Chart
+        setInterval(() => {
+            const now = new Date();
+            const timeStr = `${now.getHours()}:${now.getMinutes()}:${now.getSeconds()}`;
+            
+            const lastCall = callData[callData.length - 1];
+            const lastPut = putData[putData.length - 1];
+            
+            const newCall = +(lastCall + (Math.random() * 4 - 2)).toFixed(2);
+            const newPut = +(lastPut + (Math.random() * 4 - 2)).toFixed(2);
+
+            optionChart.data.labels.push(timeStr);
+            optionChart.data.datasets[0].data.push(newCall);
+            optionChart.data.datasets[1].data.push(newPut);
+
+            if (optionChart.data.labels.length > 20) {
+                optionChart.data.labels.shift();
+                optionChart.data.datasets[0].data.shift();
+                optionChart.data.datasets[1].data.shift();
+            }
+
+            optionChart.update('none');
+        }, 2000);
+
+        // 2. Setup SBI Single Line Chart
+        const sbiCtx = document.getElementById('sbiChart').getContext('2d');
+        const sbiChart = new Chart(sbiCtx, {
+            type: 'line',
+            data: {
+                labels: ['9:15', '10:00', '11:00', '12:00', '1:00', '2:00', '3:00', '3:30'],
+                datasets: [{
+                    label: 'SBI Share Price (SBIN)',
+                    data: [838, 840, 839, 842, 841, 844, 843, 845.5],
+                    borderColor: '#58a6ff',
+                    borderWidth: 2,
+                    fill: true,
+                    backgroundColor: 'rgba(88, 166, 255, 0.08)',
+                    tension: 0.2,
+                    pointRadius: 3
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { labels: { color: '#c9d1d9' } }
+                },
+                scales: {
+                    x: { ticks: { color: '#8b949e' }, grid: { color: '#21262d' } },
+                    y: { ticks: { color: '#8b949e' }, grid: { color: '#21262d' } }
+                }
+            }
+        });
+
+        // Deposit Modal Logic
+        function openDepositModal() {
+            document.getElementById('depositModal').style.display = 'flex';
+        }
+
+        function closeDepositModal() {
+            document.getElementById('depositModal').style.display = 'none';
+        }
+
+        function copyUPI() {
+            const upiId = document.getElementById('upiIdText').innerText;
+            navigator.clipboard.writeText(upiId);
+            alert("UPI ID Copied: " + upiId);
+        }
+    </script>
+</body>
+</html>
